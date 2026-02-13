@@ -23,9 +23,29 @@ if [[ "$ACTION" != "block-internet" && "$ACTION" != "block-lan" && "$ACTION" != 
 fi
 
 # ============================================================
+# Check for docker-compose file existence
+# ============================================================
+COMPOSE_FILE=""
+if [ -f "docker-compose.yaml" ]; then
+    COMPOSE_FILE="docker-compose.yaml"
+elif [ -f "docker-compose.yml" ]; then
+    COMPOSE_FILE="docker-compose.yml"
+else
+    echo "Error: No docker-compose.yaml or docker-compose.yml found in current directory."
+    exit 1
+fi
+
+# ============================================================
+# Check for network configuration in docker-compose file
+# ============================================================
+if ! grep -q "^networks:" "$COMPOSE_FILE"; then
+    echo "Error: No network configuration found in $COMPOSE_FILE."
+    exit 1
+fi
+
+# ============================================================
 # Common variables
 # ============================================================
-COMPOSE_FILE="docker-compose.yaml"
 
 # Dynamically detect the Docker network name from docker-compose.yaml
 COMPOSE_NETWORK=$(awk '/^networks:/{found=1; next} found && /^  [a-zA-Z_-]/{gsub(/:.*/, ""); gsub(/^[[:space:]]+/, ""); print; exit}' "$COMPOSE_FILE" 2>/dev/null)
