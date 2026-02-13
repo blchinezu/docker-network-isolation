@@ -27,7 +27,7 @@ docker-network-isolation.sh {block-internet|block-lan|block-all|unblock|status}
 
 ### Docker compose
 
-docker-compose.yaml has to contain a subnet configuration. Something like this should work:
+docker-compose.yaml has to contain a network configuration. A bridge with a subnet + gateway should work:
 
 ```yaml
 services:
