@@ -2,7 +2,7 @@
 
 Control network access for Docker Compose containers using iptables.
 
-## Modes
+### Modes
 
 | Mode | Internet | LAN/Host |
 |------|----------|----------|
@@ -13,10 +13,10 @@ Control network access for Docker Compose containers using iptables.
 
 Port-forwarded connections always work regardless of mode.
 
-## Usage
+### Usage
 
 ```
-Usage: docker-network-isolation.sh {block-internet|block-lan|block-all|unblock|status}
+docker-network-isolation.sh {block-internet|block-lan|block-all|unblock|status}
 
   block-internet  - Block internet access, allow LAN/host
   block-lan       - Block LAN/host access, allow internet
@@ -25,7 +25,26 @@ Usage: docker-network-isolation.sh {block-internet|block-lan|block-all|unblock|s
   status          - Show current network isolation state
 ```
 
-Requires `sudo` and `iptables`.
+### Docker compose
+
+docker-compose.yaml has to contain a subnet configuration. Something like this should work:
+
+```yaml
+services:
+  some_service:
+    [...]
+    networks:
+      - my-isolated-network
+
+networks:
+  my-isolated-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.255.0.0/16
+          gateway: 10.255.0.1
+```
+
 
 ## License
 
