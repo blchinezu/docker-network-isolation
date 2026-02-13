@@ -112,7 +112,7 @@ fi
 # ============================================================
 detect_status() {
     local docker_user_rules
-    docker_user_rules=$(cat ~/tmp/.stf | sudo -S iptables -S DOCKER-USER 2>/dev/null)
+    docker_user_rules=$(sudo iptables -S DOCKER-USER 2>/dev/null)
 
     # Check for blanket REJECT (present in block-internet and block-all)
     local blanket_reject
@@ -163,38 +163,38 @@ do_unblock() {
     local quiet="$1"
 
     # --- DOCKER-USER chain: block-internet / block-all rules ---
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER ESTABLISHED/RELATED RETURN rule"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 10.0.0.0/8 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 10.0.0.0/8"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 172.16.0.0/12 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 172.16.0.0/12"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 192.168.0.0/16 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 192.168.0.0/16"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 169.254.0.0/16 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 169.254.0.0/16"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER REJECT-all rule"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER ESTABLISHED/RELATED RETURN rule"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 10.0.0.0/8 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 10.0.0.0/8"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 172.16.0.0/12 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 172.16.0.0/12"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 192.168.0.0/16 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 192.168.0.0/16"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 169.254.0.0/16 -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER RETURN rule for 169.254.0.0/16"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed DOCKER-USER REJECT-all rule"
 
     # --- DOCKER-USER chain: block-lan rules ---
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 192.168.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 192.168.0.0/16"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 10.0.0.0/8 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 10.0.0.0/8"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 172.16.0.0/12"
-    cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 169.254.0.0/16"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 192.168.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 192.168.0.0/16"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 10.0.0.0/8 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 10.0.0.0/8"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 172.16.0.0/12"
+    sudo iptables -D DOCKER-USER -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 169.254.0.0/16"
 
     # Docker subnet
     local live_subnet=$(docker network inspect $NETWORK_NAME -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null)
     if [ ! -z "$live_subnet" ]; then
-        cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d $live_subnet -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed REJECT rule for Docker subnet ($live_subnet)"
+        sudo iptables -D DOCKER-USER -i $INTERFACE -d $live_subnet -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed REJECT rule for Docker subnet ($live_subnet)"
     fi
 
     # Host LAN IP rules (block-lan per-port rules)
     if [ ! -z "$HOST_LAN_IP" ]; then
-        cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d $HOST_LAN_IP -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed REJECT rule for host LAN IP ($HOST_LAN_IP)"
+        sudo iptables -D DOCKER-USER -i $INTERFACE -d $HOST_LAN_IP -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed REJECT rule for host LAN IP ($HOST_LAN_IP)"
         for cp in "${CONTAINER_PORTS[@]}"; do
             port="${cp%%/*}"
             proto="${cp#*/}"
-            cat ~/tmp/.stf | sudo -S iptables -D DOCKER-USER -i $INTERFACE -d $HOST_LAN_IP -p $proto --sport $port -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null && [ -z "$quiet" ] && echo "Removed ACCEPT for $proto port $port"
+            sudo iptables -D DOCKER-USER -i $INTERFACE -d $HOST_LAN_IP -p $proto --sport $port -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null && [ -z "$quiet" ] && echo "Removed ACCEPT for $proto port $port"
         done
     fi
 
     # --- INPUT chain (shared by block-lan and block-all) ---
-    cat ~/tmp/.stf | sudo -S iptables -D INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed INPUT REJECT rule"
-    cat ~/tmp/.stf | sudo -S iptables -D INPUT -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null && [ -z "$quiet" ] && echo "Removed INPUT ACCEPT ESTABLISHED/RELATED rule"
+    sudo iptables -D INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed INPUT REJECT rule"
+    sudo iptables -D INPUT -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null && [ -z "$quiet" ] && echo "Removed INPUT ACCEPT ESTABLISHED/RELATED rule"
 }
 
 # ============================================================
@@ -210,18 +210,18 @@ do_block_internet() {
 
     # Allow ESTABLISHED/RELATED (for responses to port-forwarded connections)
     echo "Adding RETURN for ESTABLISHED/RELATED traffic..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN; ((pos++))
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN; ((pos++))
 
     # Allow private network ranges (LAN access)
     echo "Adding RETURN for private network ranges (allow LAN)..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -d 10.0.0.0/8 -j RETURN; ((pos++))
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -d 172.16.0.0/12 -j RETURN; ((pos++))
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -d 192.168.0.0/16 -j RETURN; ((pos++))
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -d 169.254.0.0/16 -j RETURN; ((pos++))
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -d 10.0.0.0/8 -j RETURN; ((pos++))
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -d 172.16.0.0/12 -j RETURN; ((pos++))
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -d 192.168.0.0/16 -j RETURN; ((pos++))
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -d 169.254.0.0/16 -j RETURN; ((pos++))
 
     # Block everything else (internet)
     echo "Adding REJECT rule for all other traffic (internet)..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $pos -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER $pos -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
 
     echo ""
     echo "Internet blocking enabled!"
@@ -246,29 +246,29 @@ do_block_lan() {
         port="${cp%%/*}"
         proto="${cp#*/}"
         echo "Adding ACCEPT for ESTABLISHED/RELATED $proto from container port $port..."
-        cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d $HOST_LAN_IP -p $proto --sport $port -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+        sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d $HOST_LAN_IP -p $proto --sport $port -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
     done
 
     # Block everything else to the host LAN IP
     POSITION=$((${#CONTAINER_PORTS[@]} + 1))
     echo "Adding REJECT rule for all other traffic to host LAN IP ($HOST_LAN_IP)..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER $POSITION -i $INTERFACE -d $HOST_LAN_IP -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER $POSITION -i $INTERFACE -d $HOST_LAN_IP -j REJECT --reject-with icmp-host-unreachable
 
     # Block access to the entire Docker subnet (gateway + other containers)
     echo "Adding REJECT rule for Docker subnet ($SUBNET)..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d $SUBNET -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d $SUBNET -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
 
     # Block NEW outgoing connections to private networks
     echo "Adding REJECT rules for private network ranges..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d 192.168.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d 10.0.0.0/8 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 192.168.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 10.0.0.0/8 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
 
     # --- INPUT chain (container -> host direct) ---
     echo "Adding INPUT chain rules to block container -> host access..."
-    cat ~/tmp/.stf | sudo -S iptables -I INPUT 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-    cat ~/tmp/.stf | sudo -S iptables -A INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I INPUT 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    sudo iptables -A INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
 
     echo ""
     echo "LAN blocking enabled!"
@@ -290,16 +290,16 @@ do_block_all() {
 
     # Allow ESTABLISHED/RELATED (for responses to port-forwarded connections)
     echo "Adding RETURN for ESTABLISHED/RELATED traffic..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
 
     # Block everything else (internet + LAN)
     echo "Adding REJECT rule for all outgoing traffic..."
-    cat ~/tmp/.stf | sudo -S iptables -I DOCKER-USER 2 -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I DOCKER-USER 2 -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
 
     # --- INPUT chain (container -> host direct) ---
     echo "Adding INPUT chain rules to block container -> host access..."
-    cat ~/tmp/.stf | sudo -S iptables -I INPUT 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-    cat ~/tmp/.stf | sudo -S iptables -A INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
+    sudo iptables -I INPUT 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+    sudo iptables -A INPUT -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
 
     echo ""
     echo "Full network blocking enabled!"
