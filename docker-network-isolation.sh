@@ -176,10 +176,11 @@ do_unblock() {
     sudo iptables -D DOCKER-USER -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 172.16.0.0/12"
     sudo iptables -D DOCKER-USER -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed block-lan rule for 169.254.0.0/16"
 
-    # Docker subnet
+    # Docker subnet (clean up both old REJECT and new RETURN rules)
     local live_subnet=$(docker network inspect $NETWORK_NAME -f '{{range .IPAM.Config}}{{.Subnet}}{{end}}' 2>/dev/null)
     if [ ! -z "$live_subnet" ]; then
         sudo iptables -D DOCKER-USER -i $INTERFACE -d $live_subnet -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable 2>/dev/null && [ -z "$quiet" ] && echo "Removed REJECT rule for Docker subnet ($live_subnet)"
+        sudo iptables -D DOCKER-USER -i $INTERFACE -d $live_subnet -j RETURN 2>/dev/null && [ -z "$quiet" ] && echo "Removed RETURN rule for Docker subnet ($live_subnet)"
     fi
 
     # Host LAN IP rules (block-lan per-port rules)
@@ -254,16 +255,16 @@ do_block_lan() {
     echo "Adding REJECT rule for all other traffic to host LAN IP ($HOST_LAN_IP)..."
     sudo iptables -I DOCKER-USER $POSITION -i $INTERFACE -d $HOST_LAN_IP -j REJECT --reject-with icmp-host-unreachable
 
-    # Block access to the entire Docker subnet (gateway + other containers)
-    echo "Adding REJECT rule for Docker subnet ($SUBNET)..."
-    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d $SUBNET -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
-
-    # Block NEW outgoing connections to private networks
+    # Block NEW outgoing connections to private networks (LAN + other Docker networks)
     echo "Adding REJECT rules for private network ranges..."
     sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 192.168.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
     sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 10.0.0.0/8 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
     sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 172.16.0.0/12 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
     sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d 169.254.0.0/16 -m conntrack --ctstate NEW -j REJECT --reject-with icmp-host-unreachable
+
+    # Allow intra-compose communication (own Docker subnet) - inserted last so it's evaluated first
+    echo "Adding RETURN rule for own Docker subnet ($SUBNET) to allow intra-compose traffic..."
+    sudo iptables -I DOCKER-USER 1 -i $INTERFACE -d $SUBNET -j RETURN
 
     # --- INPUT chain (container -> host direct) ---
     echo "Adding INPUT chain rules to block container -> host access..."
@@ -272,7 +273,9 @@ do_block_lan() {
 
     echo ""
     echo "LAN blocking enabled!"
-    echo "VM can access internet but cannot access LAN addresses or the host."
+    echo "Containers can communicate within the same compose project."
+    echo "Cannot access LAN, host, or other Docker compose networks."
+    echo "Internet access is allowed."
     echo ""
     echo "To remove these rules, run: $0 unblock"
 }
@@ -292,9 +295,13 @@ do_block_all() {
     echo "Adding RETURN for ESTABLISHED/RELATED traffic..."
     sudo iptables -I DOCKER-USER 1 -i $INTERFACE -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
 
-    # Block everything else (internet + LAN)
-    echo "Adding REJECT rule for all outgoing traffic..."
-    sudo iptables -I DOCKER-USER 2 -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
+    # Allow intra-compose communication (own Docker subnet)
+    echo "Adding RETURN rule for own Docker subnet ($SUBNET) to allow intra-compose traffic..."
+    sudo iptables -I DOCKER-USER 2 -i $INTERFACE -d $SUBNET -j RETURN
+
+    # Block everything else (internet + LAN + other Docker networks)
+    echo "Adding REJECT rule for all other traffic..."
+    sudo iptables -I DOCKER-USER 3 -i $INTERFACE -j REJECT --reject-with icmp-host-unreachable
 
     # --- INPUT chain (container -> host direct) ---
     echo "Adding INPUT chain rules to block container -> host access..."
@@ -303,7 +310,9 @@ do_block_all() {
 
     echo ""
     echo "Full network blocking enabled!"
-    echo "VM cannot access internet or LAN, but can still respond to port-forwarded connections."
+    echo "Containers can communicate within the same compose project."
+    echo "Cannot access internet, LAN, host, or other Docker compose networks."
+    echo "Can still respond to port-forwarded connections."
     echo ""
     echo "To remove these rules, run: $0 unblock"
 }
@@ -355,3 +364,4 @@ case "$ACTION" in
         esac
         ;;
 esac
+
