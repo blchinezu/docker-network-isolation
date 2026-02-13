@@ -102,11 +102,6 @@ else
 fi
 CONTAINER_PORTS=("${!CONTAINER_PORTS_MAP[@]}")
 
-if [[ "$ACTION" == "block-lan" && ${#CONTAINER_PORTS[@]} -eq 0 ]]; then
-    echo "Error: No port mappings found in docker-compose.yaml"
-    exit 1
-fi
-
 if [[ ${#CONTAINER_PORTS[@]} -gt 0 ]]; then
     echo "Detected container ports from docker-compose.yaml:"
     for cp in "${CONTAINER_PORTS[@]}"; do
